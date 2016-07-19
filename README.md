@@ -71,3 +71,6 @@
 
 ## 黑科技
 [Android卸载监听实现](http://www.jianshu.com/p/189e319a5c45)
+
+## 开源框架
+[开源框架Android之史上最全最简单最有用的第三方开源库收集整理，有助于快速开发](http://www.tuicool.com/articles/jyA3MrU/)
