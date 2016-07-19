@@ -1,5 +1,9 @@
 # Android Explore
 
+![Android Map](./res/android_map.png)
+
+[@author 张兴业 http://blog.csdn.net/xyz_lmn](http://blog.csdn.net/xyz_lmn/article/details/41411355)
+
 ## Android进程间通信
 [Android进程间通信（IPC）机制Binder简要介绍和学习计划](http://blog.csdn.net/luoshengyang/article/details/6618363)
 
