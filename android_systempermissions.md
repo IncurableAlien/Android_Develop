@@ -15,8 +15,6 @@ Android自诞生以来，其安全性一直被人们所诟病。加之，国内�
 ###M时代之后
 Android中的权限分为两大类：普通权限和危险权限，具体可以参考开发文档。在M手机上，对于敏感权限，需要在程序运行时进行动态申请。对于非敏感权限，即Normal Permissions，和M之前的使用相同。
 
-
-
 Android6.0发布新特性：
 >
 - 锁频下语音搜索
@@ -25,8 +23,6 @@ Android6.0发布新特性：
 - Doze电量管理
 - Now on Tap
 - App link
-
-具体可以参考Android 6.0有哪些新特性。
 
 上面六个新特性中 **更完整的应用权限管理** 就为如何在Android 6.0上更好的使用Android系统权限提供了一个新的方案。
 
@@ -148,7 +144,7 @@ activity就能接收到请求申请结果。grantResults数组记录了每个权
 即使为了安全，也不能不考虑用户体验，为了防止用户被过多的打扰，API 23还提出了pemisssion_group权限组概念，即把权限分组，用户只要授权了某个组里的某一个权限，那么该组的其他权限就不需要再次授权了。比如用户已经授权了READ_PHONE_STATE，那么下次再申请CALL_PHONE时就不会再弹窗让用户授权了。
 
 
-*用来检查是否之前用户已经拒绝过这个权限了，包括已经勾选了不再提示的，这种情况下，可能需要进行提示，告诉用户这个权限app用来做什么。
+* 用来检查是否之前用户已经拒绝过这个权限了，包括已经勾选了不再提示的，这种情况下，可能需要进行提示，告诉用户这个权限app用来做什么。
 
 ```java
 ActivityCompat.shouldShowRequestPermissionRationale
@@ -181,9 +177,9 @@ this.startActivity(intent);
 当然这些变化只有在app改变编译时使用的sdk版本到23时才需要用到，如果编译时sdk版本不是23，那么会以兼容方式运行，系统仍然会通过静态方式进行权限检查。
 
 
-###动手试试
+###举个例子
 下面我们就以STORAGE组中的WRITE_EXTERNAL_STORAGE为例子，尝试在Android 6.0中使用runtime permission相关api。
-我们要做的事情非常简单，在手机的存储设备上新建一个hello.txt。
+目标：在手机的存储设备上新建一个hello.txt。
 
 1.在AndroidManifest文件中添加如下权限生命
 
@@ -207,22 +203,14 @@ this.startActivity(intent);
         }
     }
     
-好的，如果没有runtime permissions这个概念的话，那其实这个功能已经完成了，我们来看看它在Android 6.0之前的版本上的运行情况，
-
-首先是安装时的界面：
-
+好的，如果没有runtime permissions这个概念的话，那其实这个功能已经完成了，它在Android 6.0之前的版本上的运行
 它提示用户该应用会修改会删除SD卡的内容，如果此时用户选择安装，那么也就是默认将WRITE_EXTERNAL_STORAGE这个权限赋予了该应用。
-
-再来看运行结果：
-
-看吧，文件直接就创建成功了，这样真的是很危险的。
 
 接下来再在Android6.0的机子上安装这个应用，
 
-这个安装界面和之前的一样，也是向用户展示了App所涉及的权限。
+安装界面也是向用户展示了App所涉及的权限。
 
-下面看运行，
-log显示App没有权限在SD卡上创建文件。这里要再讲一下runtime permissions原理
+当实际执行时log显示App没有权限在SD卡上创建文件。这里要再讲一下runtime permissions原理
 
 对于权限分类中的dangerous permissions，runtime permissions要求App在运行的时候做权限请求，某则App则无法获得相应请求。
 
@@ -276,9 +264,183 @@ public static final int EXTERNAL_STORAGE_REQ_CODE = 10 ;
 
 ```
         
-到这里runtime permissions的权限申请操作就结束了，我们看一下效果：
+到这里runtime permissions的权限申请操作就结束了，允许后会再次调用createFile("hello.txt")方法，文件会被成功创建。
 
-允许后会再次调用createFile("hello.txt")方法，这次文件会被成功创建。
+##不重新发明轮子
+虽然动态权限的编码逻辑简单，涉及的Api也就几个。但由于申请权限的位置和授权结果回调分别在两个地方，给人的感觉就一个字乱；并且，如果Activity规模较大、需要申请权限较多时，代码就会变得混乱。针对这些，已经有前辈封装了不少 *[动态权限第三方库](https://gist.github.com/dlew/2a21b06ee8715e0f7338)，*
+
+这里拿PermissionsDispatcher进行说明。PermissionsDispatcher具有如下优点
+
+* 采用注解，代码形式简洁；
+* PermissionsDispatcher采用编译时生成代理类，让Activity/Fragment调用。因此，在效率上和官方写法没有区别。
+
+###使用
+给需要动态权限的Activity或者Fragment加上注解RuntimePermissions：
+
+```
+@RuntimePermissions
+public class MainActivity extends AppCompatActivity {
+  // ...
+}
+```
+
+给涉及到动态权限的方法加上注解@NeedsPermission：
+
+```
+@RuntimePermissions
+public class MainActivity extends AppCompatActivity {
+    @NeedsPermission(Manifest.permission.CALL_PHONE)
+    void callPhone() {
+        // Trigger the calling of a number here
+    }
+}
+```
+重新编译工程后，将产生一个以PermissionsDispatcher为后缀的代理类，例如这里是MainActivityPermissionsDispatcher。
+如果提示找不到MainActivityPermissionsDispatcher类，说明apt代码生成失败，重启Android Studio试试。
+代理类生成后，重写权限申请回调，让代理类来处理：
+
+```java
+@Override
+public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+    super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+    MainActivityPermissionsDispatcher.onRequestPermissionsResult(this, REQUEST_PERMISSION_CALL_PHONE, grantResults);
+}
+```
+
+4.3 处理授权结果
+应用首次申请权限，用户拒绝，使用@OnPermissionDenied标识的方法将作为回调：
+
+```java
+@OnPermissionDenied(Manifest.permission.CALL_PHONE)
+void showDeniedForCallPhone() {
+    Toast.makeText(this, "未授权", Toast.LENGTH_SHORT).show();
+}
+```
+
+应用首次申请权限被拒绝，再次申请权限时，给出提示信息，使用@OnShowRationale注解标识：
+
+```java
+@OnShowRationale(Manifest.permission.CALL_PHONE)
+void showRationaleForCallPhone(final PermissionRequest request) {
+    new AlertDialog.Builder(this)
+            .setTitle("提示")
+            .setMessage("需要授权电话权限")
+            .setNegativeButton("取消", new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int which) {
+                    request.cancel();
+                }
+            })
+            .setPositiveButton("确定", new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int which) {
+                    request.proceed();
+                }
+            })
+            .create()
+            .show();
+}
+```
+
+应用非首次申请权限时，授权对话框会多出一个复选框不再询问，相应回调方法用@OnNeverAskAgain标识：
+
+```java
+@OnNeverAskAgain(Manifest.permission.CALL_PHONE)
+void showNeverAskForPhoneCall() {
+    Toast.makeText(this, "不再询问", Toast.LENGTH_SHORT).show();
+}
+```
+
+[PermissionsDispatcher完整示例](https://github.com/AaronChanSunny/AndroidRuntimePermissions/blob/feature/dispatcher/app/src/main/java/com/aaron/androidruntimepermissions/MainActivity.java)
+
+
+再来一个 [android-permission-manager](https://github.com/buchandersenn/android-permission-manager)
+
+优点：
+
+* 代码简洁，容易理解
+* 使用简单
+
+```java
+private final PermissionManager permissionManager = PermissionManager.create(this);
+
+private void showCameraPreview() {
+    permissionManager.with(Manifest.permission.CAMERA)
+            .onPermissionGranted(startPermissionGrantedActivity(this, new Intent(this, CameraPreviewActivity.class)))
+            .onPermissionDenied(showPermissionDeniedSnackbar(mLayout, "Camera permission request was denied.", "SETTINGS"))
+            .onPermissionShowRationale(showPermissionShowRationaleSnackbar(mLayout, "Camera access is required to display the camera preview.", "OK"))
+            .request();
+}
+
+@Override
+public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+    permissionManager.handlePermissionResult(requestCode, grantResults);
+}
+
+```
+
+看到一个跟着一个的. 有没有跟构建Notification的builder是曾相识，实现的方式使用了建造者模式。
+
+再看一个 [Grant](https://github.com/anthonycr/Grant)
+
+优点：
+
+* 同样代码简洁，容易理解
+* 使用简单
+
+```java
+@Override
+public void onRequestPermissionsResult(int requestCode, 
+                                       @NonNull String[] permissions, 
+                                       @NonNull int[] grantResults) {
+    PermissionsManager.getInstance().notifyPermissionsChange(permissions, grantResults);
+}
+
+```
+
+```java
+PermissionsManager.getInstance().requestPermissionsIfNecessaryForResult(this,
+    new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, new PermissionsResultAction() {
+
+    @Override
+    public void onGranted() {
+        writeToStorage();
+    }
+
+    @Override
+    public void onDenied(String permission) {
+        Toast.makeText(MainActivity.this, 
+                      "Sorry, we need the Storage Permission to do that", 
+                      Toast.LENGTH_SHORT).show();
+    }
+});
+
+``` 
+
+使用了一个集合维护相关请求权限的动作，将结果通知到调用者，观察者模式。
+
+对于一个需求，实现思路不一样，最终代码的形态就不一样，但只要遵循基本原则方便调用，易于阅读理解，低耦合等，都是好代码，值得学习。
+
+# Libraries
+
+* [Andele](https://github.com/hiqes/andele)
+* [android-permissions-gradle-plugin](https://github.com/galex/android-permissions-gradle-plugin)
+* [android-permission-manager](https://github.com/buchandersenn/android-permission-manager)
+* [AndroidPermissions](https://github.com/ZeroBrain/AndroidPermissions)
+* [assent](https://github.com/afollestad/assent)
+* [Dexter](https://github.com/Karumi/Dexter)
+* [EasyMPermission](https://github.com/mobmead/EasyMPermission)
+* [EasyPermissions](https://github.com/googlesamples/easypermissions)
+* [Gota](https://github.com/alhazmy13/Gota)
+* [Grant](https://github.com/anthonycr/Grant)
+* [Let](https://github.com/canelmas/let)
+* [Nammu](https://github.com/tajchert/Nammu)
+* [Permiso](https://github.com/greysonp/permiso)
+* [PermissionsDispatcher](https://github.com/hotchemi/PermissionsDispatcher)
+* [PermissionUtil](https://github.com/kayvannj/PermissionUtil)
+* [RxPermissions](https://github.com/tbruyelle/RxPermissions)
+* [WPAndroidPermissions](https://github.com/webpartners/WPAndroidPermissions)
+
 
 ##参考
 
