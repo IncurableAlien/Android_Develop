@@ -121,6 +121,17 @@ protected ViewGroup generateLayout(DecorView decor) {
 ![时序图](./res/screenshot 2016-07-15 15.54.42.png)
 
 
+##Tips
+Q：如何getContentView()
+
+```java
+private View getContentView(){
+        ViewGroup view = (ViewGroup) getWindow().getDecorView();
+        FrameLayout content = (FrameLayout) view.getChildAt(0);
+        return content.getChildAt(0);
+    }
+```
+
 ##MORE
 [Android 的窗口管理系统 (View, Canvas, WindowManager)](http://www.cnblogs.com/samchen2009/p/3367496.html)
 
