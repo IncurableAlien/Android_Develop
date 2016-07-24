@@ -2,8 +2,15 @@
 
 ##[Activity](./android_activity.md)
 
-##[View](./android_view.md)
+##[View的解读](./android_view.md)
+
+* [Fragment](./android_fragment.md)
+* [ListView](./android_listview.md)
+* [RecyclerView](http://antonioleiva.com/recyclerview-listener/)
 * [Bitmap](./android_view_bitmap.md)
+* [ImageView](./android_view_imageview.md)
+* [ViewStub](./android_viewstub.md)
+* [AndroidCircularSeekBar](https://github.com/RaghavSood/AndroidCircularSeekBar)
 
 ##[插件化](./android_pulgin.md)
 
