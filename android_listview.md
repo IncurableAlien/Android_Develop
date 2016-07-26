@@ -14,3 +14,10 @@
 [一个顺滑又漂亮的Android下拉刷新与加载更多列表组件](https://github.com/zarics/ZrcListView)
 
 [android listview addHeaderView和addFooterView的注意事项【转】  ](http://li-bonan.blog.163.com/blog/static/135564770201261041641668/)
+
+
+http://www.juziku.com/weizhishi/3292.htm
+http://www.cnblogs.com/androidez/archive/2013/02/23/2923791.html
+http://blog.chengbo.net/2012/03/09/onitemclick-return-wrong-position-when-listview-has-headerview.html
+http://www.voidcn.com/blog/goodlixueyong/article/p-4877792.html
+http://www.125135.com/339429.htm
