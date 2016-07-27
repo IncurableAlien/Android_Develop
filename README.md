@@ -71,10 +71,14 @@
 #### 黑科技
 [Android卸载监听实现](http://www.jianshu.com/p/189e319a5c45)
 
+[AD SDK](./android_4_ad_sdk.md)
+
 ### 开源项目学习
 [开源框架Android之史上最全最简单最有用的第三方开源库收集整理，有助于快速开发](http://www.tuicool.com/articles/jyA3MrU/)
 
 [Fresco](./android_opensource_fresco.md)
+
+[各大公司技术博客](http://asteam.cc/index.php/archives/10/?hmsr=toutiao.io&utm_medium=toutiao.io&utm_source=toutiao.io)
 
 ###Q&A
 Q1:[如何解决65535天花板？](./android_q1.md)
