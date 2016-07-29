@@ -76,11 +76,20 @@
 ### 开源项目学习
 [开源框架Android之史上最全最简单最有用的第三方开源库收集整理，有助于快速开发](http://www.tuicool.com/articles/jyA3MrU/)
 
+[带你学开源项目：OkHttp--自己动手实现okhttp](https://wingjay.com/2016/07/21/%E5%B8%A6%E4%BD%A0%E5%AD%A6%E5%BC%80%E6%BA%90%E9%A1%B9%E7%9B%AE%EF%BC%9AOkHttp-%E8%87%AA%E5%B7%B1%E5%8A%A8%E6%89%8B%E5%AE%9E%E7%8E%B0okhttp/?hmsr=toutiao.io&utm_medium=toutiao.io&utm_source=toutiao.io)
+
 [Fresco](./android_opensource_fresco.md)
 
 [各大公司技术博客](http://asteam.cc/index.php/archives/10/?hmsr=toutiao.io&utm_medium=toutiao.io&utm_source=toutiao.io)
 
+[开源项目学习](./android_source_study.md)
+
+### Y OPEN SOURCE
+
+[YOkHttp](./y_open_source/y_ok_http.md)
+
 ###Q&A
+
 Q1:[如何解决65535天花板？](./android_q1.md)
 
 Q2:[一种动态为apk写入信息的方案](http://pingguohe.net/2016/03/21/Dynimac-write-infomation-into-apk.html?hmsr=toutiao.io&utm_medium=toutiao.io&utm_source=toutiao.io)
@@ -90,4 +99,4 @@ Q3:[android 定时任务的解决方案](./android_alarm.md)
 
 ![Android Map](./res/android_map.png)
 
-[@author 张兴业 http://blog.csdn.net/xyz_lmn](http://blog.csdn.net/xyz_lmn/article/details/41411355)
+[From @author 张兴业 http://blog.csdn.net/xyz_lmn](http://blog.csdn.net/xyz_lmn/article/details/41411355)
