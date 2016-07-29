@@ -34,8 +34,6 @@
 
 ####[Application](./android_application.md)
 
-
-
 [Reflection](./android_2_reflection.md)
 
 ### 进阶篇
