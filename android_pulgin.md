@@ -34,6 +34,8 @@
 ##Other
 
 ##参考
+[Android插件化原理解析——Hook机制之动态代理](http://weishu.me/2016/01/28/understand-plugin-framework-proxy-hook/)
+
 [包建强，插件化从入门到放弃](http://mp.weixin.qq.com/s?__biz=MjM5MDE0Mjc4MA==&mid=2650993300&idx=1&sn=797fa87ef528cff3a50e77806cf9f675&scene=1&srcid=07124TeQfqvSzge8vCmJ66Oi#wechat_redirect)
 [专访包建强：为什么我说Android插件化从入门到放弃？](http://www.infoq.com/cn/news/2016/04/baojianqiang-interview)
 
@@ -49,9 +51,29 @@
 
 ##Person
 >
-包建强，
-《App研发录》一书作者。同时著有《2015年无线技术白皮书》，发表于2016年《程序员》杂志。擅长iOS和Android，对Android插件化、iOS热修复等技术多有涉及。目前从事区块链技术研究工作。
+>包建强，
+>《App研发录》一书作者。同时著有《2015年无线技术白皮书》，发表于2016年《程序员》杂志。擅长iOS和Android，对Android插件化、iOS热修复等技术多有涉及。目前从事区块链技术研究工作。
 
 >
 >[张涛](http://kymjs.com/)
 
+
+
+Other
+
+360的加载框架的地址: [https://github.com/Qihoo360/DroidPlugin](https://github.com/Qihoo360/DroidPlugin)
+
+另外一个阿里同学在开发中的插件框架：[https://github.com/limpoxe/Android-Plugin-Framework](https://github.com/limpoxe/Android-Plugin-Framework) 
+
+整理了下以前star的热修复 插件 和 换肤的东东 
+
+[https://github.com/Qihoo360/DroidPlugin](https://github.com/Qihoo360/DroidPlugin) 
+
+[https://github.com/limpoxe/Android-Plugin-Framework](https://github.com/limpoxe/Android-Plugin-Framework)
+[https://github.com/houkx/android-pluginmgr](https://github.com/houkx/android-pluginmgr)
+[https://github.com/bunnyblue/DroidFix](https://github.com/bunnyblue/DroidFix)
+[https://github.com/dodola/HotFix](https://github.com/dodola/HotFix)
+[https://github.com/jasonross/Nuwa](https://github.com/jasonross/Nuwa)
+[https://github.com/alibaba/AndFix](https://github.com/alibaba/AndFix)
+[https://github.com/hongyangAndroid/AndroidChangeSkin](https://github.com/hongyangAndroid/AndroidChangeSkin)
+[https://github.com/fengjundev/Android-Skin-Loader](https://github.com/fengjundev/Android-Skin-Loader)

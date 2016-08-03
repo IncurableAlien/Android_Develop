@@ -42,6 +42,10 @@
 
 #####[Android 6.0 动态权限介绍](./android_systempermissions.md)
 
+##### [视频播放相关](https://github.com/danylovolokh/VideoPlayerManager)
+
+[数据格式处理](./android_2_data.md)
+
 ##### WebView
 [Android WebView Memory Leak WebView内存泄漏解决方案](http://my.oschina.net/zhibuji/blog/100580)
 
@@ -53,6 +57,7 @@
   * [腾讯手机管家实战分析：内存突增是为神马？](http://bugly.qq.com/bbs/forum.php?mod=viewthread&tid=30&highlight=%E5%86%85%E5%AD%98%E7%AA%81%E5%A2%9E)
 * 启动速度
 * 卡顿
+* [如何在Android中避免创建不必要的对象](http://droidyue.com/blog/2016/08/01/avoid-creating-unnecesssary-objects-in-android/?hmsr=toutiao.io&utm_medium=toutiao.io&utm_source=toutiao.io)
 
 
 
@@ -85,6 +90,10 @@
 ### Y OPEN SOURCE
 
 [YOkHttp](./y_open_source/y_ok_http.md)
+
+### Public
+
+[发布开源库](http://blog.chengdazhi.com/index.php/217?hmsr=toutiao.io&utm_medium=toutiao.io&utm_source=toutiao.io)
 
 ###Q&A
 
