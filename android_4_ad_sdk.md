@@ -160,3 +160,11 @@
 [Facebook原生广告接入总结](http://blog.csdn.net/figo0423/article/details/46914423)
 
 [IOS Facebook接入](https://yq.aliyun.com/articles/29855)
+
+[facebook sdk接入部分问题和解决方案](http://tjlibaoh.blog.163.com/blog/static/211226413201492922154362/)
+
+[浅析Facebook 广告相关性评分](http://facebookjia.com/facebook-ads/%E6%B5%85%E6%9E%90facebook-%E5%B9%BF%E5%91%8A%E7%9B%B8%E5%85%B3%E6%80%A7%E8%AF%84%E5%88%86)
+
+[Facebook 移动广告投放方式分析](http://facebookjia.com/facebook-ads/facebook-%E7%A7%BB%E5%8A%A8%E5%B9%BF%E5%91%8A%E6%8A%95%E6%94%BE%E6%96%B9%E5%BC%8F%E5%88%86%E6%9E%90)
+
+[Custom Audiences和Lookalike Audiences广告形式浅析](http://facebookjia.com/facebook-ads/custom-audiences%E5%92%8Clookalike-audiences%E5%B9%BF%E5%91%8A%E5%BD%A2%E5%BC%8F%E6%B5%85%E6%9E%90)
