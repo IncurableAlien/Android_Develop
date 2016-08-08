@@ -32,6 +32,8 @@
 
   [获取TextView显示的字符串宽度](http://2kpurple.github.io/2014/11/02/get-text-view-text-width/)
 
+* [BroadCast](./android_broadcast.md)
+
 ####[Application](./android_application.md)
 
 [Reflection](./android_2_reflection.md)
