@@ -425,6 +425,20 @@ C:\Users\admin\.android>keytool -list -v -keystore debug.keystore
 输入密钥库口令:
 默认的口令是android
 
+##Smail
+AssetManager
+
+Dalvik VS JVM
+Dalvik VM 是基于寄存器，专属的文件执行格式dex
+
+JVM基于栈,执行的是java字节码
+
+Dalvik VM 比JVM执行速度更快，占用空间更小
+
+什么是Smali?
+
+Smali基本语法
+
 ##参考资料
 
 [Android应用程序资源的编译和打包过程分析](http://blog.csdn.net/luoshengyang/article/details/8744683)
