@@ -53,6 +53,8 @@
 
 #### 安全
 
+[Android 逆向](./android_decomplie.md)
+
 #### 性能相关
 * 内存
   * [基于Android Studio的内存泄漏检测与解决全攻略](http://wetest.qq.com/lab/view/?id=99)

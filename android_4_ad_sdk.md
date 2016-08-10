@@ -545,4 +545,7 @@ public class AttributionIdentifiers
 
 [Custom Audiences和Lookalike Audiences广告形式浅析](http://facebookjia.com/facebook-ads/custom-audiences%E5%92%8Clookalike-audiences%E5%B9%BF%E5%91%8A%E5%BD%A2%E5%BC%8F%E6%B5%85%E6%9E%90)
 
+相关下载
+[工具下载地址](./tool/)
+
 
