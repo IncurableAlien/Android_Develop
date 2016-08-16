@@ -917,7 +917,7 @@ Resources getTopLevelResources(String resDir, String[] splitResDirs,
 
 ##### [Android动态加载技术 简单易懂的介绍方式](https://segmentfault.com/a/1190000004062866)
 
-
+[插件化框架和热修复技术知识汇总](https://www.figotan.org/2016/08/12/android-plugin-and-hotfix-collections/?hmsr=toutiao.io&utm_medium=toutiao.io&utm_source=toutiao.io)
 
 
 
