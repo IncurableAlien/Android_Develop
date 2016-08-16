@@ -206,6 +206,353 @@
 
 在实现插件化APK之前，我们需要先了解一下Android中的类加载机制，作为实现动态加载的基础。
 
+
+
+**动态加载的基础是ClassLoader**，从名字也可以看出，ClassLoader就是专门用来处理类加载工作的，所以这货也叫类加载器，而且一个运行中的APP **不仅只有一个类加载器**。
+
+其实，在Android系统启动的时候会创建一个Boot类型的ClassLoader实例，用于加载一些系统Framework层级需要的类，我们的Android应用里也需要用到一些系统的类，所以APP启动的时候也会把这个Boot类型的ClassLoader传进来。
+
+此外，APP也有自己的类，这些类保存在APK的dex文件里面，所以APP启动的时候，也会创建一个自己的ClassLoader实例，用于加载自己dex文件中的类。验证方法：
+
+
+
+```java
+  @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        ClassLoader classLoader = getClassLoader();
+        if (classLoader != null){
+            Log.i(TAG, "[onCreate] classLoader " + i + " : " + classLoader.toString());
+            while (classLoader.getParent()!=null){
+                classLoader = classLoader.getParent();
+                Log.i(TAG,"[onCreate] classLoader " + i + " : " + classLoader.toString());
+            }
+        }
+    }
+```
+
+
+
+输出结果：
+
+```java
+[onCreate] classLoader 1 : dalvik.system.PathClassLoader[DexPathList[[zip file "/data/app/me.kaede.anroidclassloadersample-1/base.apk"],nativeLibraryDirectories=[/vendor/lib, /system/lib]]]
+
+[onCreate] classLoader 2 : java.lang.BootClassLoader@14af4e32
+```
+
+
+
+可以看见有2个Classloader实例，一个是BootClassLoader（系统启动的时候创建的），另一个是PathClassLoader（应用启动时创建的，用于加载“/data/app/me.kaede.anroidclassloadersample-1/base.apk”里面的类）。由此也可以看出，**一个运行的Android应用至少有2个ClassLoader**。
+
+
+
+创建一个ClassLoader实例的时候，需要使用一个现有的ClassLoader实例作为新创建的实例的Parent。这样一来，一个Android应用，甚至整个Android系统里所有的ClassLoader实例都会被一棵树关联起来，这也是ClassLoader的 **双亲代理模型**（Parent-Delegation Model）的特点。
+
+
+
+#### ClassLoader双亲代理模型加载类的特点和作用
+
+
+
+JVM中ClassLoader通过defineClass方法加载jar里面的Class，而Android中这个方法被弃用了。
+
+```java
+  @Deprecated
+    protected final Class<?> defineClass(byte[] classRep, int offset, int length)
+            throws ClassFormatError {
+        throw new UnsupportedOperationException("can't load this type of class file");
+    }
+```
+
+
+
+取而代之的是loadClass方法
+
+```java
+public Class<?> loadClass(String className) throws ClassNotFoundException {
+        return loadClass(className, false);
+    }
+
+    protected Class<?> loadClass(String className, boolean resolve) throws ClassNotFoundException {
+        Class<?> clazz = findLoadedClass(className);
+
+        if (clazz == null) {
+            ClassNotFoundException suppressed = null;
+            try {
+                clazz = parent.loadClass(className, false);
+            } catch (ClassNotFoundException e) {
+                suppressed = e;
+            }
+
+            if (clazz == null) {
+                try {
+                    clazz = findClass(className);
+                } catch (ClassNotFoundException e) {
+                    e.addSuppressed(suppressed);
+                    throw e;
+                }
+            }
+        }
+
+        return clazz;
+    }
+```
+
+
+
+#### 特点
+
+从源码中我们也可以看出，loadClass方法在加载一个类的实例的时候，
+
+1. 会先查询当前ClassLoader实例是否加载过此类，有就返回；
+2. 如果没有。查询Parent是否已经加载过此类，如果已经加载过，就直接返回Parent加载的类；
+3. 如果继承路线上的ClassLoader都没有加载，才由Child执行类的加载工作；
+
+这样做有个明显的特点，如果一个类被位于树根的ClassLoader加载过，那么在以后整个系统的生命周期内，这个类永远不会被重新加载。
+
+#### 作用
+
+首先是共享功能，一些Framework层级的类一旦被顶层的ClassLoader加载过就缓存在内存里面，以后任何地方用到都不需要重新加载。
+
+除此之外还有隔离功能，不同继承路线上的ClassLoader加载的类肯定不是同一个类，这样的限制避免了用户自己的代码冒充核心类库的类访问核心类库包可见成员的情况。这也好理解，一些系统层级的类会在系统初始化的时候被加载，比如java.lang.String，如果在一个应用里面能够简单地用自定义的String类把这个系统的String类给替换掉，那将会有严重的安全问题。
+
+
+
+#### 使用ClassLoader一些需要注意的问题
+
+我们可以通过动态加载获得新的类，从而升级一些代码逻辑，这里有几个问题要注意一下。
+
+如果你希望通过动态加载的方式，加载一个新版本的dex文件，使用里面的新类替换原有的旧类，从而修复原有类的BUG，那么你必须保证在加载新类的时候，旧类还没有被加载，因为如果已经加载过旧类，那么ClassLoader会一直优先使用旧类。
+
+如果旧类总是优先于新类被加载，我们也可以使用一个与加载旧类的ClassLoader没有树的继承关系的另一个ClassLoader来加载新类，因为ClassLoader只会检查其Parent有没有加载过当前要加载的类，如果两个ClassLoader没有继承关系，那么旧类和新类都能被加载。
+
+不过这样一来又有另一个问题了，在Java中，只有当两个实例的类名、包名以及加载其的ClassLoader都相同，才会被认为是同一种类型。上面分别加载的新类和旧类，虽然包名和类名都完全一样，但是由于加载的ClassLoader不同，所以并不是同一种类型，在实际使用中可能会出现类型不符异常。
+
+> 同一个Class = 相同的 ClassName + PackageName + ClassLoader
+
+以上问题在采用动态加载功能的开发中容易出现，请注意。
+
+
+
+#### DexClassLoader 和 PathClassLoader
+
+在Android中，ClassLoader是一个抽象类，实际开发过程中，我们一般是使用其具体的子类DexClassLoader、PathClassLoader这些类加载器来加载类的，它们的不同之处是：
+
+- DexClassLoader可以加载jar/apk/dex，可以从SD卡中加载未安装的apk；
+- PathClassLoader只能加载系统中已经安装过的apk；
+
+#### 类加载器的初始化
+
+平时开发的时候，使用DexClassLoader就够用了，但是我们不妨挖一下这两者具体细节上的区别。
+
+```java
+// DexClassLoader.java
+public class DexClassLoader extends BaseDexClassLoader {
+    public DexClassLoader(String dexPath, String optimizedDirectory,
+            String libraryPath, ClassLoader parent) {
+        super(dexPath, new File(optimizedDirectory), libraryPath, parent);
+    }
+}
+
+// PathClassLoader.java
+public class PathClassLoader extends BaseDexClassLoader {
+    public PathClassLoader(String dexPath, ClassLoader parent) {
+        super(dexPath, null, null, parent);
+    }
+
+    public PathClassLoader(String dexPath, String libraryPath,
+            ClassLoader parent) {
+        super(dexPath, null, libraryPath, parent);
+    }
+}
+```
+
+这两者只是简单的对BaseDexClassLoader做了一下封装，具体的实现还是在父类里。不过这里也可以看出，PathClassLoader的optimizedDirectory只能是null，进去BaseDexClassLoader看看这个参数是干什么的
+
+```java
+    public BaseDexClassLoader(String dexPath, File optimizedDirectory, String libraryPath, ClassLoader parent) {
+    super(parent);
+    this.originalPath = dexPath;
+    this.pathList = new DexPathList(this, dexPath, libraryPath, optimizedDirectory);
+}
+```
+这里创建了一个DexPathList实例，进去看看
+
+```java
+public DexPathList(ClassLoader definingContext, String dexPath,
+            String libraryPath, File optimizedDirectory) {
+        ……
+        this.dexElements = makeDexElements(splitDexPath(dexPath), optimizedDirectory);
+    }
+
+    private static Element[] makeDexElements(ArrayList<File> files,
+            File optimizedDirectory) {
+        ArrayList<Element> elements = new ArrayList<Element>();
+        for (File file : files) {
+            ZipFile zip = null;
+            DexFile dex = null;
+            String name = file.getName();
+            if (name.endsWith(DEX_SUFFIX)) {
+                dex = loadDexFile(file, optimizedDirectory);
+            } else if (name.endsWith(APK_SUFFIX) || name.endsWith(JAR_SUFFIX)
+                    || name.endsWith(ZIP_SUFFIX)) {
+                zip = new ZipFile(file);
+            }
+            ……
+            if ((zip != null) || (dex != null)) {
+                elements.add(new Element(file, zip, dex));
+            }
+        }
+        return elements.toArray(new Element[elements.size()]);
+    }
+
+    private static DexFile loadDexFile(File file, File optimizedDirectory)
+            throws IOException {
+        if (optimizedDirectory == null) {
+            return new DexFile(file);
+        } else {
+            String optimizedPath = optimizedPathFor(file, optimizedDirectory);
+            return DexFile.loadDex(file.getPath(), optimizedPath, 0);
+        }
+    }
+
+    /**
+     * Converts a dex/jar file path and an output directory to an
+     * output file path for an associated optimized dex file.
+     */
+    private static String optimizedPathFor(File path,
+            File optimizedDirectory) {
+        String fileName = path.getName();
+        if (!fileName.endsWith(DEX_SUFFIX)) {
+            int lastDot = fileName.lastIndexOf(".");
+            if (lastDot < 0) {
+                fileName += DEX_SUFFIX;
+            } else {
+                StringBuilder sb = new StringBuilder(lastDot + 4);
+                sb.append(fileName, 0, lastDot);
+                sb.append(DEX_SUFFIX);
+                fileName = sb.toString();
+            }
+        }
+        File result = new File(optimizedDirectory, fileName);
+        return result.getPath();
+    }
+```
+
+看到这里我们明白了，optimizedDirectory是用来缓存我们需要加载的dex文件的，并创建一个DexFile对象，如果它为null，那么会直接使用dex文件原有的路径来创建DexFile
+对象。
+
+optimizedDirectory必须是一个内部存储路径，还记得我们之前说过的，无论哪种动态加载，加载的可执行文件一定要存放在内部存储。DexClassLoader可以指定自己的optimizedDirectory，所以它可以加载外部的dex，因为这个dex会被复制到内部路径的optimizedDirectory；而PathClassLoader没有optimizedDirectory，所以它只能加载内部的dex，这些大都是存在系统中已经安装过的apk里面的。
+
+
+
+
+
+#### 加载类的过程
+
+上面还只是创建了类加载器的实例，其中创建了一个DexFile实例，用来保存dex文件，我们猜想这个实例就是用来加载类的。
+
+Android中，ClassLoader用loadClass方法来加载我们需要的类
+
+```java
+ public Class<?> loadClass(String className) throws ClassNotFoundException {
+        return loadClass(className, false);
+    }
+
+    protected Class<?> loadClass(String className, boolean resolve) throws ClassNotFoundException {
+        Class<?> clazz = findLoadedClass(className);
+        if (clazz == null) {
+            ClassNotFoundException suppressed = null;
+            try {
+                clazz = parent.loadClass(className, false);
+            } catch (ClassNotFoundException e) {
+                suppressed = e;
+            }
+
+            if (clazz == null) {
+                try {
+                    clazz = findClass(className);
+                } catch (ClassNotFoundException e) {
+                    e.addSuppressed(suppressed);
+                    throw e;
+                }
+            }
+        }
+        return clazz;
+    }
+
+```
+
+
+
+loadClass方法调用了findClass方法，而BaseDexClassLoader重载了这个方法，得到BaseDexClassLoader看看
+
+```java
+@Override
+    protected Class<?> findClass(String name) throws ClassNotFoundException {
+        Class clazz = pathList.findClass(name);
+        if (clazz == null) {
+            throw new ClassNotFoundException(name);
+        }
+        return clazz;
+    }
+
+```
+
+结果还是调用了DexPathList的findClass
+
+```java
+public Class findClass(String name) {
+        for (Element element : dexElements) {
+            DexFile dex = element.dexFile;
+            if (dex != null) {
+                Class clazz = dex.loadClassBinaryName(name, definingContext);
+                if (clazz != null) {
+                    return clazz;
+                }
+            }
+        }
+        return null;
+    }
+```
+
+这里遍历了之前所有的DexFile实例，其实也就是遍历了所有加载过的dex文件，再调用loadClassBinaryName方法一个个尝试能不能加载想要的类，真是简单粗暴
+
+```java
+public Class loadClassBinaryName(String name, ClassLoader loader) {
+        return defineClass(name, loader, mCookie);
+    }
+    private native static Class defineClass(String name, ClassLoader loader, int cookie);
+```
+
+看到这里想必大家都明白了，loadClassBinaryName中调用了Native方法defineClass加载类。
+
+至此，ClassLoader的创建和加载类的过程的完成了。有趣的是，标准JVM中，ClassLoader是用defineClass加载类的，而Android中defineClass被弃用了，改用了loadClass方法，而且加载类的过程也挪到了DexFile中，在DexFile中加载类的具体方法也叫defineClass，不知道是Google故意写成这样的还是巧合。
+
+#### 自定义ClassLoader
+
+平时进行动态加载开发的时候，使用DexClassLoader就够了。但我们也可以创建自己的类去继承ClassLoader，需要注意的是loadClass方法并不是final类型的，所以我们可以重载loadClass方法并改写类的加载逻辑。
+
+通过前面我们分析知道，ClassLoader双亲代理的实现很大一部分就是在loadClass方法里，我们可以通过重写loadClass方法避开双亲代理的框架，这样一来就可以在重新加载已经加载过的类，也可以在加载类的时候注入一些代码。这是一种Hack的开发方式，采用这种开发方式的程序稳定性可能比较差，但是却可以实现一些“黑科技”的功能。
+
+
+
+#### Android程序比起一般Java程序在使用动态加载时麻烦在哪里
+
+通过上面的分析，我们知道使用ClassLoader动态加载一个外部的类是非常容易的事情，所以很容易就能实现动态加载新的可执行代码的功能，但是比起一般的Java程序，在Android程序中使用动态加载主要有两个麻烦的问题：
+
+1. Android中许多组件类（如Activity、Service等）是需要在Manifest文件里面注册后才能工作的（系统会检查该组件有没有注册），所以即使动态加载了一个新的组件类进来，没有注册的话还是无法工作；
+2. Res资源是Android开发中经常用到的，而Android是把这些资源用对应的R.id注册好，运行时通过这些ID从Resource实例中获取对应的资源。如果是运行时动态加载进来的新类，那类里面用到R.id的地方将会抛出找不到资源或者用错资源的异常，因为新类的资源ID根本和现有的Resource实例中保存的资源ID对不上；
+
+说到底，抛开虚拟机的差别不说，**一个Android程序和标准的Java程序最大的区别就在于他们的上下文环境（Context）不同**。Android中，这个环境可以给程序提供组件需要用到的功能，也可以提供一些主题、Res等资源，其实上面说到的两个问题都可以统一说是这个环境的问题，而现在的各种Android动态加载框架中，核心要解决的东西也正是“如何给外部的新类提供上下文环境”的问题。
+
+参考：
+
+[Android动态加载基础 ClassLoader工作机制](https://segmentfault.com/a/1190000004062880)
+
+
+
 在Android中，我们通过`ClassLoader`来加载应用程序运行需要的类。`ClassLoader`是一个抽象类，我们需要继承该类来实现具体的类加载器的行为。在Android中，`ClassLoader`的实现类采用了`代理模型(Delegation Model)`来执行类的加载。每一个`ClassLoader`类都有一个与之相关联的父加载器，当一个`ClassLoader`类尝试加载某个类时，首先会委托其父加载器加载该类。如果父加载器成功加载了该类，则不会再由该子加载器进行加载；如果父加载器未能加载成功，则再由子加载器进行类加载的动作。
 
 在Android中，我们一般使用`DexClassLoader`和`PathClassLoader`进行类的加载。
@@ -338,6 +685,191 @@ buildTypes {
 
   ​
 
+上述方式只是能加载不存在的类，让APK增加本来不存在的方法。
+
+但Android中组件如Activity、Service等是需要在AndroidManifest中注册了才可以用。
+
+
+
+Activity等组件是需要在Manifest中注册后才能以标准Intent的方式启动的（如果有兴趣强烈推荐你了解下Activity生命周期实现的机制及源码），通过ClassLoader加载并实例化的Activity实例只是一个普通的Java对象，能调用对象的方法，但是它没有生命周期，而且Activity等系统组件是需要Android的上下文环境的（Context等资源），没有这些东西Activity根本无法工作。
+
+使用插件APK里的Activity需要解决**两个问题**：
+
+1. 如何使插件APK里的Activity具有生命周期；
+2. 如何使插件APK里的Activity具有上下文环境（使用R资源）；
+
+代理Activity模式为解决这两个问题提供了一种思路。
+
+
+
+##### 代理Activity模式
+
+这种模式也是我们项目中，继“简单动态加载模式”之后，第二种投入实际生产项目的开发方式。
+
+其主要特点是：主项目APK注册一个代理Activity（命名为ProxyActivity），ProxyActivity是一个普通的Activity，但只是一个空壳，自身并没有什么业务逻辑。每次打开插件APK里的某一个Activity的时候，都是在主项目里使用标准的方式启动ProxyActivity，再在ProxyActivity的生命周期里同步调用插件中的Activity实例的生命周期方法，从而执行插件APK的业务逻辑。
+
+> ProxyActivity + 没注册的Activity = 标准的Activity
+
+
+
+### 处理插件Activity的生命周期
+
+目前还真的没什么办法能够处理这个问题，一个Activity的启动，如果不采用标准的Intent方式，没有经历过Android系统Framework层级的一系列初始化和注册过程，它的生命周期方法是不会被系统调用的（除非你能够修改Android系统的一些代码，而这已经是另一个领域的话题了，这里不展开）。
+
+那把插件APK里所有Activity都注册到主项目的Manifest里，再以标准Intent方式启动。但是事先主项目并不知道插件Activity里会新增哪些Activity，如果每次有新加的Activity都需要升级主项目的版本，那不是本末倒置了，不如把插件的逻辑直接写到主项目里来得方便。
+
+那就绕绕弯吧，生命周期不就是系统对Activity一些特定方法的调用嘛，那我们可以在主项目里创建一个ProxyActivity，再由它去代理调用插件Activity的生命周期方法（这也是代理模式叫法的由来）。用ProxyActivity（一个标准的Activity实例）的生命周期同步控制插件Activity（普通类的实例）的生命周期，同步的方式可以有下面两种：
+
+- 在ProxyActivity生命周期里用反射调用插件Activity相应生命周期的方法，简单粗暴。
+- 把插件Activity的生命周期抽象成接口，在ProxyActivity的生命周期里调用。另外，多了这一层接口，也方便主项目控制插件Activity。
+
+这里补充说明下，Fragment自带生命周期，用Fragment来代替Activity开发可以省去大部分生命周期的控制工作，但是会使得界面跳转比较麻烦，而且Honeycomb以前没有Fragment，无法在API11以前的系统使用。
+
+
+
+### 在插件Activity里使用R资源
+
+使用代理的方式同步调用生命周期的做法容易理解，也没什么问题，但是要使用插件里面的res资源就有点麻烦了。简单的说，res里的每一个资源都会在R.java里生成一个对应的Integer类型的id，APP启动时会先把R.java注册到当前的上下文环境，我们在代码里以R文件的方式使用资源时正是通过使用这些id访问res资源，然而插件的R.java并没有注册到当前的上下文环境，所以插件的res资源也就无法通过id使用了。
+
+这个问题困扰了我们很久，一开始的项目急于投入生产，所以我们索性抛开res资源，插件里需要用到的新资源都通过纯Java代码的方式创建（包括XML布局、动画、点九图等），蛋疼但有效。知道网上出现了解决这一个问题的有效方法（一开始貌似是在手机QQ项目中出现的，但是没有开源所以不清楚，在这里真的佩服这些对技术这么有追求的开发者）。
+
+记得我们平时怎么使用res资源的吗，就是“getResources().getXXX(resid)”，看看“getResources()”
+
+
+
+```java
+@Override
+    public Resources getResources() {
+        if (mResources != null) {
+            return mResources;
+        }
+        if (mOverrideConfiguration == null) {
+            mResources = super.getResources();
+            return mResources;
+        } else {
+            Context resc = createConfigurationContext(mOverrideConfiguration);
+            mResources = resc.getResources();
+            return mResources;
+        }
+    }
+```
+
+
+
+看起来像是通过mResources实例获取res资源的，在找找mResources实例是怎么初始化的，看看上面的代码发现是使用了super类ContextThemeWrapper里的“getResources()”方法，看进去
+
+```java
+Context mBase;
+    public ContextWrapper(Context base) {
+        mBase = base;
+    }
+@Override
+    public Resources getResources()
+    {
+        return mBase.getResources();
+    }
+```
+
+看样子又调用了Context的“getResources()”方法，看到这里，我们知道Context只是个抽象类，其实际工作都是在ContextImpl完成的，赶紧去ContextImpl里看看“getResources()”方法吧
+
+```java
+@Override
+    public Resources getResources() {
+        return mResources;
+    }
+```
+
+
+
+还是没有mResources的创建过程啊！啊，不对，mResources是ContextImpl的成员变量，可能是在构造方法中创建的，赶紧去看看构造方法（这里只给出关键代码）。
+
+```java
+resources = mResourcesManager.getTopLevelResources(packageInfo.getResDir(),
+                        packageInfo.getSplitResDirs(), packageInfo.getOverlayDirs(),
+                        packageInfo.getApplicationInfo().sharedLibraryFiles, displayId,
+                        overrideConfiguration, compatInfo);
+mResources = resources;
+```
+
+看样子是在ResourcesManager的“getTopLevelResources”方法中创建的，看进去
+
+```java
+Resources getTopLevelResources(String resDir, String[] splitResDirs,
+            String[] overlayDirs, String[] libDirs, int displayId,
+            Configuration overrideConfiguration, CompatibilityInfo compatInfo) {
+        Resources r;
+        AssetManager assets = new AssetManager();
+        if (libDirs != null) {
+            for (String libDir : libDirs) {
+                if (libDir.endsWith(".apk")) {
+                    if (assets.addAssetPath(libDir) == 0) {
+                        Log.w(TAG, "Asset path '" + libDir +
+                                "' does not exist or contains no resources.");
+                    }
+                }
+            }
+        }
+        DisplayMetrics dm = getDisplayMetricsLocked(displayId);
+        Configuration config ……;
+        r = new Resources(assets, dm, config, compatInfo);
+        return r;
+    }
+```
+
+看来这里是关键了，看样子就是通过这些代码从一个APK文件加载res资源并创建Resources实例，经过这些逻辑后就可以使用R文件访问资源了。具体过程是，获取一个AssetManager实例，使用其“addAssetPath”方法加载APK（里的资源），再使用DisplayMetrics、Configuration、CompatibilityInfo实例一起创建我们想要的Resources实例。
+
+最终访问插件APK里res资源的关键代码如下
+
+```java
+ try {  
+        AssetManager assetManager = AssetManager.class.newInstance();  
+        Method addAssetPath = assetManager.getClass().getMethod("addAssetPath", String.class);  
+        addAssetPath.invoke(assetManager, mDexPath);  
+        mAssetManager = assetManager;  
+    } catch (Exception e) {  
+        e.printStackTrace();  
+    }  
+    Resources superRes = super.getResources();  
+    mResources = new Resources(mAssetManager, superRes.getDisplayMetrics(),  
+            superRes.getConfiguration());
+```
+
+注意，有的人担心从插件APK加载进来的res资源的ID可能与主项目里现有的资源ID冲突，其实这种方式加载进来的res资源并不是融入到主项目里面来，主项目里的res资源是保存在ContextImpl里面的Resources实例，整个项目共有，而新加进来的res资源是保存在新创建的Resources实例的，也就是说ProxyActivity其实有两套res资源，并不是把新的res资源和原有的res资源合并了（所以不怕R.id重复），对两个res资源的访问都需要用对应的Resources实例，这也是开发时要处理的问题。（其实应该有3套，Android系统会加载一套framework-res.apk资源，里面存放系统默认Theme等资源）
+
+额外补充下，这里你可能注意到了我们采用了反射的方法调用AssetManager的“addAssetPath”方法，而在上面ResourcesManager中调用AssetManager的“addAssetPath”方法是直接调用的，不用反射啊，而且看看SDK里AssetManager的“addAssetPath”方法的源码（这里也能看到具体APK资源的提取过程是在Native里完成的），发现它也是public类型的，外部可以直接调用，为什么还要用反射呢？
+
+
+
+```java
+ /**
+     * Add an additional set of assets to the asset manager.  This can be
+     * either a directory or ZIP file.  Not for use by applications.  Returns
+     * the cookie of the added asset, or 0 on failure.
+     * {@hide}
+     */
+    public final int addAssetPath(String path) {
+        synchronized (this) {
+            int res = addAssetPathNative(path);
+            makeStringBlocks(mStringBlocks);
+            return res;
+        }
+    }
+```
+
+
+
+这里有个误区，SDK的源码只是给我们参考用的，APP实际上运行的代码逻辑在android.jar里面（位于android-sdk\platforms\android-XX），反编译android.jar并找到ResourcesManager类就可以发现这些接口都是对应用层隐藏的。
+
+到此，启动插件里的Activity的两大问题都有解决的方案了。
+
+##### [Android动态加载进阶 代理Activity模式](https://segmentfault.com/a/1190000004062972)
+
+##### [Android动态加载补充 加载SD卡中的SO库](https://segmentfault.com/a/1190000004062899)
+
+##### 代理模式的具体项目 [dynamic-load-apk](https://github.com/singwhatiwanna/dynamic-load-apk)
+
+##### 
+
 ##Advice
 
 ##Other
@@ -378,6 +910,14 @@ buildTypes {
 [https://github.com/alibaba/AndFix](https://github.com/alibaba/AndFix)
 [https://github.com/hongyangAndroid/AndroidChangeSkin](https://github.com/hongyangAndroid/AndroidChangeSkin)
 [https://github.com/fengjundev/Android-Skin-Loader](https://github.com/fengjundev/Android-Skin-Loader)
+
+
+
+##### [Android动态加载技术 系列索引](https://segmentfault.com/a/1190000004086213)
+
+##### [Android动态加载技术 简单易懂的介绍方式](https://segmentfault.com/a/1190000004062866)
+
+
 
 
 
